@@ -21,13 +21,11 @@ def post_journal(entry_date, reference, description, lines, source_type="MANUAL"
             VALUES(?,?,?,?)
         """, (entry_date, reference, description, source_type))
         jid = cur.lastrowid
-
         for code, debit, credit in lines:
             cur.execute("""
                 INSERT INTO journal_lines(journal_id,account_id,debit,credit)
                 VALUES(?,?,?,?)
             """, (jid, account_id(con, code), float(debit), float(credit)))
-
         con.commit()
         return jid
     except Exception:
@@ -65,29 +63,19 @@ def create_opening_balance(entry_date, balances, reference="OPENING"):
     debit_lines, credit_lines = [], []
     for code, value in balances.items():
         value = round(float(value), 2)
-        if value == 0:
+        if not value:
             continue
         normal_debit = types[code] in ("Asset", "Expense")
         if normal_debit:
-            (debit_lines if value > 0 else credit_lines).append(
-                (code, abs(value), 0) if value > 0 else (code, 0, abs(value))
-            )
+            if value > 0: debit_lines.append((code,value,0))
+            else: credit_lines.append((code,0,abs(value)))
         else:
-            (credit_lines if value > 0 else debit_lines).append(
-                (code, 0, abs(value)) if value > 0 else (code, abs(value), 0)
-            )
+            if value > 0: credit_lines.append((code,0,value))
+            else: debit_lines.append((code,abs(value),0))
 
-    debit_total = sum(x[1] for x in debit_lines)
-    credit_total = sum(x[2] for x in credit_lines)
-    difference = round(debit_total - credit_total, 2)
+    difference = round(sum(x[1] for x in debit_lines)-sum(x[2] for x in credit_lines),2)
+    if difference > 0: credit_lines.append(("3000",0,difference))
+    elif difference < 0: debit_lines.append(("3000",abs(difference),0))
 
-    # Opening difference is treated as owner's capital.
-    if difference > 0:
-        credit_lines.append(("3000", 0, difference))
-    elif difference < 0:
-        debit_lines.append(("3000", abs(difference), 0))
-
-    return post_journal(
-        entry_date, reference, "Opening balances",
-        debit_lines + credit_lines, "OPENING"
-    )
+    return post_journal(entry_date,reference,"Opening balances",
+                        debit_lines+credit_lines,"OPENING")

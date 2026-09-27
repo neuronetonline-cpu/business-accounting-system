@@ -1,21 +1,10 @@
 # Roadmap
 
-## V1
-Accounting prototype.
-
-## V2
-Accounting core + opening balances.
-
-## V3
-Daily transactions + automatic reports.
-
-## V4
-Operational accounting + management dashboard:
-- Customers
-- Suppliers
-- Inventory
-- Credit aging
-- Bank reconciliation
-- Cash flow
-- KPIs
-- Alerts
+V1 - Accounting prototype
+V2 - Accounting core + opening balances
+V3 - Daily transactions + reports
+V4 - Customers, suppliers and credit
+V5 - Inventory and product management
+V6 - Bank reconciliation and advanced reports
+V7 - Management decision dashboard
+V8 - Packaging, backup and production EXE

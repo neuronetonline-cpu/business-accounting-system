@@ -9,14 +9,13 @@ DB_PATH = APP_DIR / "business.db"
 def get_connection():
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
+    con.execute("PRAGMA foreign_keys = ON")
     return con
 
 def init_database():
     con = get_connection()
     cur = con.cursor()
     cur.executescript("""
-    PRAGMA foreign_keys = ON;
-
     CREATE TABLE IF NOT EXISTS accounts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         code TEXT NOT NULL UNIQUE,
@@ -43,6 +42,52 @@ def init_database():
         credit REAL NOT NULL DEFAULT 0,
         FOREIGN KEY(journal_id) REFERENCES journal_entries(id) ON DELETE CASCADE,
         FOREIGN KEY(account_id) REFERENCES accounts(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS customers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        phone TEXT,
+        address TEXT,
+        credit_limit REAL NOT NULL DEFAULT 0,
+        active INTEGER NOT NULL DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS suppliers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        phone TEXT,
+        address TEXT,
+        credit_limit REAL NOT NULL DEFAULT 0,
+        active INTEGER NOT NULL DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS receivable_entries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id INTEGER NOT NULL,
+        entry_date TEXT NOT NULL,
+        reference TEXT,
+        entry_type TEXT NOT NULL,
+        debit REAL NOT NULL DEFAULT 0,
+        credit REAL NOT NULL DEFAULT 0,
+        due_date TEXT,
+        journal_id INTEGER,
+        FOREIGN KEY(customer_id) REFERENCES customers(id),
+        FOREIGN KEY(journal_id) REFERENCES journal_entries(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS payable_entries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        supplier_id INTEGER NOT NULL,
+        entry_date TEXT NOT NULL,
+        reference TEXT,
+        entry_type TEXT NOT NULL,
+        debit REAL NOT NULL DEFAULT 0,
+        credit REAL NOT NULL DEFAULT 0,
+        due_date TEXT,
+        journal_id INTEGER,
+        FOREIGN KEY(supplier_id) REFERENCES suppliers(id),
+        FOREIGN KEY(journal_id) REFERENCES journal_entries(id)
     );
 
     CREATE TABLE IF NOT EXISTS accounting_periods (
