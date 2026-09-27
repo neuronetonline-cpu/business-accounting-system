@@ -174,7 +174,9 @@ class MainApp(tk.Tk):
             btn.configure(bg=COLORS["blue"] if active else COLORS["navy"], font=(FONT, 9, "bold" if active else "normal"))
 
     def clear(self):
-        for w in self.body.winfo_children():
+        # Clear only page widgets inside the scrollable content area.
+        # Keep the ScrollableFrame canvas, scrollbars, and inner frame alive.
+        for w in self.body.inner.winfo_children():
             w.destroy()
 
     def show(self, cls, *args, title=None):
