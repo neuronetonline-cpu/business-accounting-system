@@ -2,6 +2,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from app.database import get_connection
+from app.accounting.audit import audit
 
 class ContactsFrame(tk.Frame):
     def __init__(self, master, mode="customer", on_change=None):
@@ -41,6 +42,7 @@ class ContactsFrame(tk.Frame):
             con.execute(f"INSERT INTO {table}(name,phone,address,credit_limit) VALUES(?,?,?,?)",
                         (name,self.phone.get().strip(),self.address.get().strip(),limit))
             con.commit();con.close()
+            audit("CUSTOMER_ADD" if self.mode=="customer" else "SUPPLIER_ADD", name, f"{"Customer" if self.mode=="customer" else "Supplier"} added: {name}")
             for w in [self.name,self.phone,self.address,self.limit]: w.delete(0,"end")
             self.refresh()
             if self.on_change:self.on_change()

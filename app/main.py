@@ -23,7 +23,7 @@ class MainApp(tk.Tk):
         self.geometry("1380x840");self.minsize(1150,720);self.configure(bg="#eef2f7")
         h=tk.Frame(self,bg="#102f4f",height=72);h.pack(fill="x")
         tk.Label(h,text="BUSINESS ACCOUNTING SYSTEM",bg="#102f4f",fg="white",font=("Segoe UI",20,"bold")).pack(side="left",padx=24,pady=17)
-        tk.Label(h,text="V5 + V6 • Inventory + Bank",bg="#102f4f",fg="#dce9f5",font=("Segoe UI",10)).pack(side="right",padx=24)
+        tk.Label(h,text="V7 + V8 • Decision Dashboard + Production",bg="#102f4f",fg="#dce9f5",font=("Segoe UI",10)).pack(side="right",padx=24)
         nav=tk.Frame(self,bg="white");nav.pack(fill="x")
         buttons=[
           ("Decision Dashboard",self.decision_dashboard),("Dashboard",self.dashboard),("Opening",self.opening),("Transaction",self.transactions),

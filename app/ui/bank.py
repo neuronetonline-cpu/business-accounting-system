@@ -2,6 +2,7 @@
 import tkinter as tk
 from tkinter import ttk,messagebox
 from app.database import get_connection
+from app.accounting.audit import audit
 
 class BankFrame(tk.Frame):
     def __init__(self,master):
@@ -31,7 +32,9 @@ class BankFrame(tk.Frame):
                             (code,name,"Asset","1010"))
             con.execute("INSERT INTO bank_accounts(account_code,name,bank_name,account_number,ledger_code) VALUES(?,?,?,?,?)",
                         (code,name,self.bank.get(),self.number.get(),code))
-            con.commit();con.close();self.refresh()
+            con.commit();con.close()
+            audit("BANK_ADD", code, f"Bank account added: {name}")
+            self.refresh()
         except Exception as e:messagebox.showerror("Error",str(e))
     def refresh(self):
         for x in self.tree.get_children():self.tree.delete(x)
@@ -67,9 +70,15 @@ class ReconciliationFrame(tk.Frame):
             con=get_connection();r=con.execute("SELECT ledger_code FROM bank_accounts WHERE id=?",(bid,)).fetchone()
             book=con.execute("""SELECT COALESCE(SUM(l.debit-l.credit),0) b FROM journal_lines l
                                 JOIN accounts a ON a.id=l.account_id WHERE a.code=?""",(r["ledger_code"],)).fetchone()["b"]
-            diff=stmt-book
-            self.result.config(text=f"Book Balance: Rs. {book:,.2f}    Difference: Rs. {diff:,.2f}")
+            diff=round(stmt-book,2)
+            status="RECONCILED" if abs(diff) < 0.005 else "DIFFERENCE"
+            con.execute("""INSERT INTO bank_reconciliations
+                (bank_account_id,statement_date,statement_balance,book_balance,difference,status)
+                VALUES(?,?,?,?,?,?)""",(bid,self.date.get().strip(),stmt,book,diff,status))
+            con.commit()
+            self.result.config(text=f"Book Balance: Rs. {book:,.2f}    Difference: Rs. {diff:,.2f}    Status: {status}")
             con.close()
+            audit("BANK_RECONCILIATION", self.date.get().strip(), f"Bank reconciliation: {status}, difference Rs. {diff:,.2f}")
         except Exception as e:messagebox.showerror("Error",str(e))
 
 
