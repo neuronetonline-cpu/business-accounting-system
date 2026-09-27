@@ -1,10 +1,9 @@
 # Roadmap
 
-V1 - Accounting prototype
-V2 - Accounting core + opening balances
-V3 - Daily transactions + reports
-V4 - Customers, suppliers and credit
-V5 - Inventory and product management
-V6 - Bank reconciliation and advanced reports
-V7 - Management decision dashboard
-V8 - Packaging, backup and production EXE
+- V1 Accounting prototype
+- V2 Accounting core + opening balances
+- V3 Daily transactions
+- V4 Customer / supplier credit
+- V5 + V6 Inventory + sales/purchases + bank/reconciliation + expanded reports
+- V7 Management decision dashboard
+- V8 Production EXE, backup/restore, validation and audit controls

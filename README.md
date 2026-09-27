@@ -1,38 +1,49 @@
 # Business Accounting System
 
-## V4 — Customers, Suppliers & Credit
+## V5 + V6 — Inventory, Sales, Purchases, Bank & Reports
 
-Added:
-- Customer master
-- Supplier master
-- Customer credit invoices
-- Customer payments
-- Supplier credit bills
-- Supplier payments
-- Customer outstanding balances
-- Supplier outstanding balances
-- Receivable aging
-- Payable aging
-- Credit limits
-- Automatic accounting journal posting
-- Dashboard receivable/payable cards
+Combined build.
 
-Run:
+### Inventory
+- Product master
+- SKU
+- Category / brand
+- Cost and selling price
+- Reorder level
+- Stock movements
+- Current quantity
+- Stock cost value
+- Low-stock status
+
+### Sales & Purchases
+- Simple sale entry
+- Simple purchase entry
+- Cash / Bank / Credit
+- COGS posting
+- Inventory movement
+- Customer / Supplier linkage
+
+### Bank
+- Multiple bank accounts
+- Bank account master
+- Book balance
+- Statement balance check
+- Reconciliation difference
+
+### Accounting
+Transactions post to:
+Journal -> General Ledger -> Trial Balance -> P&L -> Balance Sheet
+
+### Run
 ```bash
 python -m app.main
 ```
 
-Build EXE:
+### Build Windows EXE
 ```bash
 py -m pip install pyinstaller
 py -m PyInstaller --noconfirm --onefile --windowed --name BusinessAccounting app/main.py
 ```
 
-Next:
-- Inventory module
-- Product master
-- Purchases and sales invoices
-- Stock movement and COGS
-- Bank reconciliation
-- Advanced reports
-- Management decision dashboard
+### Important
+This is a development/test build. Before production use, V7/V8 should add transaction editing/reversal, stronger validation, backups, period closing, detailed invoice lines, stock valuation policy, and audit controls.
