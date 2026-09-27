@@ -55,7 +55,7 @@ def create_supplier_credit(supplier_id, entry_date, reference, amount, due_date=
         row=con.execute("SELECT name FROM suppliers WHERE id=?",(supplier_id,)).fetchone()
         if not row: raise ValueError("Supplier not found.")
         jid=post_journal(entry_date,reference,description,
-                         [("5000",amount,0),("2000",0,amount)],"SUPPLIER_CREDIT")
+                         [("1200",amount,0),("2000",0,amount)],"SUPPLIER_CREDIT")
         con.execute("""INSERT INTO payable_entries
             (supplier_id,entry_date,reference,entry_type,debit,credit,due_date,journal_id)
             VALUES(?,?,?,?,?,?,?,?)""",

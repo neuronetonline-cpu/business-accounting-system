@@ -9,7 +9,9 @@ def product_balance(product_id):
     COALESCE(SUM(CASE WHEN movement_type IN ('PURCHASE','OPENING','ADJUST_IN')
     THEN total_cost ELSE -total_cost END),0) c FROM stock_movements WHERE product_id=?""",(product_id,)).fetchone()
     con.close()
-    return r["q"],r["c"]
+    # Normalize SQLite floating-point totals so stock checks do not reject
+    # an exact quantity such as 1 because of values like 0.9999999999999999.
+    return round(float(r["q"] or 0), 6), round(float(r["c"] or 0), 2)
 
 def add_product(sku,name,category,brand,unit,cost,selling,reorder):
     con=get_connection()
@@ -81,8 +83,9 @@ def create_sale(sale_date,invoice_no,customer_id,payment_type,items,paid=0):
     try:
         for product_id,qty,price,cost in items:
             if qty<=0 or price<0 or cost<0: raise ValueError("Sale quantity must be greater than zero and prices cannot be negative.")
+            qty = round(float(qty), 6)
             q,_=product_balance(product_id)
-            if q < qty:
+            if q + 1e-6 < qty:
                 raise ValueError(f"Insufficient stock. Available: {q:g}, requested: {qty:g}.")
     finally:
         con.close()

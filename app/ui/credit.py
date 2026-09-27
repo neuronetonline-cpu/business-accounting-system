@@ -67,7 +67,7 @@ class CreditFrame(tk.Frame):
                 txt=f"DEBIT  Bank / Cash\n       Rs. {a:,.2f}\n\nCREDIT Accounts Receivable\n       Rs. {a:,.2f}"
         else:
             if typ=="Credit Invoice":
-                txt=f"DEBIT  Purchase / COGS\n       Rs. {a:,.2f}\n\nCREDIT Accounts Payable\n       Rs. {a:,.2f}"
+                txt=f"DEBIT  Inventory\n       Rs. {a:,.2f}\n\nCREDIT Accounts Payable\n       Rs. {a:,.2f}"
             else:
                 txt=f"DEBIT  Accounts Payable\n       Rs. {a:,.2f}\n\nCREDIT Bank / Cash\n       Rs. {a:,.2f}"
         self.preview.config(text=txt)
