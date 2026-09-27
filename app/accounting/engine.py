@@ -1,6 +1,5 @@
 
 from app.database import get_connection
-from app.accounting.audit import audit
 
 def account_id(con, code):
     row = con.execute("SELECT id FROM accounts WHERE code=?", (code,)).fetchone()
@@ -41,13 +40,11 @@ def post_simple_transaction(entry_date, reference, description,
     amount = float(amount)
     if amount <= 0:
         raise ValueError("Amount must be greater than zero.")
-    jid = post_journal(
+    return post_journal(
         entry_date, reference, description,
         [(debit_account, amount, 0), (credit_account, 0, amount)],
         source_type
     )
-    audit(source_type, reference, description)
-    return jid
 
 def create_opening_balance(entry_date, balances, reference="OPENING"):
     con = get_connection()
@@ -80,7 +77,5 @@ def create_opening_balance(entry_date, balances, reference="OPENING"):
     if difference > 0: credit_lines.append(("3000",0,difference))
     elif difference < 0: debit_lines.append(("3000",abs(difference),0))
 
-    jid = post_journal(entry_date,reference,"Opening balances",
-                       debit_lines+credit_lines,"OPENING")
-    audit("OPENING", reference, "Opening balances posted")
-    return jid
+    return post_journal(entry_date,reference,"Opening balances",
+                        debit_lines+credit_lines,"OPENING")

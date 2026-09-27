@@ -1,28 +1,37 @@
 # Production Checklist
 
-## Completed in V7 + V8 test build
-- [x] Double-entry journal posting
-- [x] Opening balances
-- [x] Daily transactions
-- [x] Customers / suppliers
-- [x] Receivables / payables
-- [x] Inventory / sales / purchases
-- [x] Bank accounts / transfers
-- [x] Bank reconciliation calculation + saved reconciliation record
-- [x] Trial Balance / P&L / Balance Sheet
-- [x] Decision dashboard
-- [x] Backup / restore
-- [x] Audit log event capture
-- [x] Basic stock-negative prevention
-- [x] Partial payment accounting for sales/purchases
+## Accounting
+- [x] Double-entry journal
+- [x] General Ledger
+- [x] Trial Balance
+- [x] P&L
+- [x] Balance Sheet
+- [x] Customers / Suppliers
+- [x] Inventory
+- [x] Sales / Purchases
+- [x] Bank accounts
+- [x] Reconciliation check
 
-## Still recommended before real business use
-- [ ] Transaction history with void/reversal instead of deleting accounting entries
-- [ ] Multi-line sales and purchase invoices
-- [ ] Customer/supplier opening balances linked to sub-ledgers
-- [ ] Inventory opening quantities and stock adjustment screen
-- [ ] Accounting period close/lock
-- [ ] Bank statement import and transaction matching
-- [ ] User login and permissions
-- [ ] More detailed aging and monthly reports
-- [ ] Final Windows EXE acceptance test on the target PC
+## Management
+- [x] KPI dashboard
+- [x] Receivables / Payables visibility
+- [x] Inventory value
+- [x] Low-stock alert
+- [x] Monthly sales / COGS view
+
+## Data safety
+- [x] Local SQLite database
+- [x] Manual backup
+- [x] Restore
+- [x] Audit log
+
+## Final testing still recommended
+- Test backup/restore before real data entry.
+- Test a complete month with known figures.
+- Reconcile bank balances against statements.
+- Verify inventory quantities and valuation.
+- Verify Trial Balance debit = credit.
+- Keep regular database backups.
+
+## Windows EXE
+Run `build_exe.bat` on a Windows machine with Python installed.

@@ -2,7 +2,7 @@
 
 ## V7 + V8 — Management Dashboard + Production Preparation
 
-This is the combined V7/V8 development build with audit, reconciliation persistence, stock validation, and partial-payment accounting fixes.
+This is the combined V7/V8 development build.
 
 ### V7 Management Decision Dashboard
 - Sales
