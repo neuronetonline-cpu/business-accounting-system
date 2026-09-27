@@ -43,6 +43,7 @@ class POSImportFrame(tk.Frame):
         self.balance_entries={}
         con=get_connection()
         banks=con.execute("SELECT ledger_code,name FROM bank_accounts WHERE active=1 ORDER BY name").fetchall()
+        bank_codes={str(r['ledger_code']) for r in banks}
         # Show the same accounting accounts used by the main Opening Balances screen,
         # while replacing generic Bank-Main/Bank-Other with real bank accounts.
         base=con.execute("SELECT code,name FROM accounts WHERE account_type IN ('Asset','Liability','Equity') ORDER BY CAST(code AS INTEGER), code").fetchall()
@@ -51,6 +52,10 @@ class POSImportFrame(tk.Frame):
         rows=[]
         for r in base:
             code=r['code']; name=r['name']
+            # Actual bank accounts are rendered from bank_accounts below.
+            # Do not render their matching accounts row here as well.
+            if str(code) in bank_codes:
+                continue
             if code == '1000':
                 rows.append((code,name,'editable'))
             elif code in ('1010','1020'):

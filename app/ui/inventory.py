@@ -121,7 +121,7 @@ class InventoryFrame(tk.Frame):
                         if sku: product=con.execute('SELECT * FROM products WHERE sku=?',(sku,)).fetchone()
                         if not product: product=con.execute('SELECT * FROM products WHERE lower(name)=lower(?)',(name,)).fetchone()
                         if product:
-                            pid=product['id']; con.execute('UPDATE products SET sku=CASE WHEN ?<>'' THEN ? ELSE sku END,name=?,cost_price=?,selling_price=? WHERE id=?',(sku,sku,name,cost,sale,pid)); updated+=1
+                            pid=product['id']; con.execute("UPDATE products SET sku=CASE WHEN ? <> '' THEN ? ELSE sku END, name=?, cost_price=?, selling_price=? WHERE id=?", (sku, sku, name, cost, sale, pid)); updated+=1
                         else:
                             con.execute('INSERT INTO products(sku,name,cost_price,selling_price) VALUES(?,?,?,?)',(sku or None,name,cost,sale)); pid=con.execute('SELECT last_insert_rowid()').fetchone()[0]; created+=1
                         con.execute("DELETE FROM stock_movements WHERE product_id=? AND movement_date=? AND movement_type='OPENING'",(pid,opening_date))
