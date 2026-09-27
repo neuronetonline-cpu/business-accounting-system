@@ -3,15 +3,17 @@ import tkinter as tk
 from tkinter import ttk,messagebox,filedialog
 from app.accounting.backup import create_backup,restore_backup
 from app.database import get_connection
+from app.ui.theme import COLORS, FONT
+from app.ui.widgets import Card, tree_with_scrollbars
 
 class AdminFrame(tk.Frame):
     def __init__(self,master):
-        super().__init__(master,bg="#eef2f7");self.build()
+        super().__init__(master,bg=COLORS["bg"]);self.build()
 
     def build(self):
-        tk.Label(self,text="System Administration",bg="#eef2f7",fg="#102f4f",
-                 font=("Segoe UI",22,"bold")).pack(anchor="w")
-        box=tk.Frame(self,bg="white",padx=22,pady=22);box.pack(fill="x",pady=15)
+        tk.Label(self,text="System Administration",bg=COLORS["bg"],fg=COLORS["text"],
+                 font=(FONT,22,"bold")).pack(anchor="w")
+        box=Card(self,padx=22,pady=22);box.pack(fill="x",pady=15)
 
         ttk.Button(box,text="CREATE BACKUP",command=self.backup).pack(side="left",padx=6)
         ttk.Button(box,text="RESTORE BACKUP",command=self.restore).pack(side="left",padx=6)
@@ -20,12 +22,10 @@ class AdminFrame(tk.Frame):
         self.status=tk.Label(box,text="",bg="white",fg="#425466")
         self.status.pack(anchor="w",pady=(18,0))
 
-        logbox=tk.Frame(self,bg="white",padx=12,pady=12);logbox.pack(fill="both",expand=True)
+        logbox=Card(self,padx=12,pady=12);logbox.pack(fill="both",expand=True)
         cols=("Time","Type","Reference","Description")
-        self.tree=ttk.Treeview(logbox,columns=cols,show="headings")
-        for c in cols:self.tree.heading(c,text=c);self.tree.column(c,width=190)
-        self.tree.column("Description",width=400)
-        self.tree.pack(fill="both",expand=True)
+        frame,self.tree=tree_with_scrollbars(logbox,cols,{"Time":170,"Type":170,"Reference":220,"Description":600},height=18)
+        frame.pack(fill="both",expand=True)
         self.refresh()
 
     def backup(self):

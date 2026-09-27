@@ -1,55 +1,33 @@
-
 import tkinter as tk
-from tkinter import ttk
-from app.accounting.analytics import kpis,monthly_sales
+from app.accounting.analytics import kpis, monthly_sales
+from app.ui.theme import COLORS, FONT
+from app.ui.widgets import Card, StatCard, MiniBarChart, tree_with_scrollbars
 
 class DecisionDashboardFrame(tk.Frame):
-    def __init__(self,master):
-        super().__init__(master,bg="#eef2f7"); self.build()
-
+    def __init__(self,master): super().__init__(master,bg=COLORS['bg']); self.build()
     def build(self):
-        tk.Label(self,text="Management Decision Dashboard",bg="#eef2f7",
-                 fg="#102f4f",font=("Segoe UI",24,"bold")).pack(anchor="w")
-        tk.Label(self,text="Use the figures below to review cash, working capital, stock and profitability.",
-                 bg="#eef2f7",fg="#647586").pack(anchor="w",pady=(4,15))
-
-        k=kpis()
-        grid=tk.Frame(self,bg="#eef2f7");grid.pack(fill="x")
-        cards=[
-          ("SALES",k["sales"]),("NET PROFIT",k["profit"]),
-          ("RECEIVABLES",k["receivables"]),("PAYABLES",k["payables"]),
-          ("INVENTORY",k["inventory"]),("TOTAL ASSETS",k["assets"])
-        ]
-        for i,(title,val) in enumerate(cards):
-            c=tk.Frame(grid,bg="white",highlightbackground="#d4dde6",highlightthickness=1)
-            c.grid(row=i//3,column=i%3,sticky="nsew",padx=5,pady=5,ipadx=15,ipady=13)
-            tk.Label(c,text=title,bg="white",fg="#718096",font=("Segoe UI",9,"bold")).pack(anchor="w")
-            tk.Label(c,text=f"Rs. {val:,.2f}",bg="white",fg="#102f4f",
-                     font=("Segoe UI",17,"bold")).pack(anchor="w",pady=(4,0))
+        tk.Label(self,text='Management Decision Dashboard',bg=COLORS['bg'],fg=COLORS['text'],font=(FONT,24,'bold')).pack(anchor='w')
+        tk.Label(self,text='A visual overview of sales, profit, working capital, stock and business attention points.',bg=COLORS['bg'],fg=COLORS['muted'],font=(FONT,9)).pack(anchor='w',pady=(2,14))
+        k=kpis(); cards=[('Sales',k['sales'],'▣',COLORS['success']),('Net Profit',k['profit'],'▥',COLORS['blue']),('Receivables',k['receivables'],'●',COLORS['warning']),('Payables',k['payables'],'●',COLORS['danger']),('Inventory',k['inventory'],'□','#159a9a'),('Total Assets',k['assets'],'◉','#7c5cff')]
+        grid=tk.Frame(self,bg=COLORS['bg']); grid.pack(fill='x');
+        for i,(t,v,ic,ac) in enumerate(cards):
+            c=StatCard(grid,t,f"Rs. {v:,.2f}",ic,ac); c.grid(row=i//3,column=i%3,sticky='nsew',padx=5,pady=5)
         for i in range(3):grid.columnconfigure(i,weight=1)
-
-        lower=tk.Frame(self,bg="#eef2f7");lower.pack(fill="both",expand=True,pady=15)
-
-        alerts=tk.Frame(lower,bg="white",padx=18,pady=18);alerts.pack(side="left",fill="both",expand=True,padx=(0,8))
-        tk.Label(alerts,text="Alerts / Attention",bg="white",fg="#102f4f",
-                 font=("Segoe UI",13,"bold")).pack(anchor="w")
+        monthly=monthly_sales(); data=[{'label':r['month'],'sales':r['sales'],'cogs':r['cogs'],'profit':r['sales']-r['cogs']} for r in monthly]
+        row=tk.Frame(self,bg=COLORS['bg']); row.pack(fill='both',expand=True,pady=10)
+        chart=MiniBarChart(row,'Monthly Sales / COGS / Gross Profit',data,series=('sales','cogs','profit'),labels=[d['label'] for d in data],height=250); chart.pack(side='left',fill='both',expand=True,padx=(0,6))
+        alerts=Card(row,padx=16,pady=14); alerts.pack(side='right',fill='both',expand=True,padx=(6,0))
+        tk.Label(alerts,text='Alerts & Attention',bg='white',fg=COLORS['text'],font=(FONT,13,'bold')).pack(anchor='w')
         alert_lines=[]
-        if k["low_stock"]>0: alert_lines.append(f"{k['low_stock']} product(s) at or below reorder level.")
-        if k["receivables"]>0: alert_lines.append(f"Customer receivables outstanding: Rs. {k['receivables']:,.2f}")
-        if k["payables"]>0: alert_lines.append(f"Supplier payables outstanding: Rs. {k['payables']:,.2f}")
-        if k["profit"]<0: alert_lines.append("Current accounting result is a loss.")
-        if not alert_lines: alert_lines.append("No current alerts from the available accounting data.")
-        for line in alert_lines:
-            tk.Label(alerts,text="• "+line,bg="white",fg="#425466",
-                     font=("Segoe UI",10),wraplength=430,justify="left").pack(anchor="w",pady=7)
-
-        trend=tk.Frame(lower,bg="white",padx=18,pady=18);trend.pack(side="right",fill="both",expand=True,padx=(8,0))
-        tk.Label(trend,text="Monthly Sales / COGS",bg="white",fg="#102f4f",
-                 font=("Segoe UI",13,"bold")).pack(anchor="w")
-        cols=("Month","Sales","COGS","Gross Profit")
-        tree=ttk.Treeview(trend,columns=cols,show="headings",height=8)
-        for c in cols:tree.heading(c,text=c);tree.column(c,width=120)
-        tree.pack(fill="both",expand=True,pady=8)
-        for r in monthly_sales():
-            gp=r["sales"]-r["cogs"]
-            tree.insert("","end",values=(r["month"],f"{r['sales']:,.2f}",f"{r['cogs']:,.2f}",f"{gp:,.2f}"))
+        if k['low_stock']: alert_lines.append((COLORS['warning'],f"{k['low_stock']} product(s) are at or below reorder level."))
+        if k['receivables']>0: alert_lines.append((COLORS['warning'],f"Receivables outstanding: Rs. {k['receivables']:,.2f}"))
+        if k['payables']>0: alert_lines.append((COLORS['danger'],f"Payables outstanding: Rs. {k['payables']:,.2f}"))
+        if k['profit']<0: alert_lines.append((COLORS['danger'],'Current result is a loss.'))
+        if not alert_lines: alert_lines=[(COLORS['success'],'No current alerts from the available accounting data.')]
+        for color,text in alert_lines:
+            f=tk.Frame(alerts,bg='white'); f.pack(fill='x',pady=7); tk.Label(f,text='●',bg='white',fg=color,font=(FONT,10,'bold')).pack(side='left',padx=(0,8)); tk.Label(f,text=text,bg='white',fg=COLORS['text'],font=(FONT,9),wraplength=420,justify='left').pack(side='left',anchor='w')
+        recent=Card(self,padx=12,pady=12); recent.pack(fill='both',expand=True,pady=(4,0)); tk.Label(recent,text='Recent Transactions',bg='white',fg=COLORS['text'],font=(FONT,13,'bold')).pack(anchor='w',pady=(0,8))
+        from app.database import get_connection
+        con=get_connection(); rows=con.execute('SELECT event_time,event_type,reference,description FROM audit_log ORDER BY id DESC LIMIT 10').fetchall(); con.close()
+        frame,tree=tree_with_scrollbars(recent,('Time','Type','Reference','Description'),{'Time':150,'Type':150,'Reference':180,'Description':500},height=7); frame.pack(fill='both',expand=True)
+        for r in rows:tree.insert('','end',values=(r['event_time'],r['event_type'],r['reference'] or '',r['description'] or ''))

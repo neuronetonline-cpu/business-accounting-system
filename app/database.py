@@ -10,6 +10,8 @@ def get_connection():
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA foreign_keys = ON")
+    con.execute("PRAGMA busy_timeout = 5000")
+    con.execute("PRAGMA journal_mode = WAL")
     return con
 
 def init_database():

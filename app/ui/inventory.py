@@ -1,44 +1,83 @@
-
 import tkinter as tk
-from tkinter import ttk,messagebox
+from tkinter import ttk, messagebox, filedialog
 from app.database import get_connection
-from app.accounting.inventory import add_product,product_balance
+from app.accounting.inventory import add_product, product_balance
+from app.accounting.audit import audit
+from app.ui.theme import COLORS, FONT
+from app.ui.widgets import tree_with_scrollbars, Card
 
 class InventoryFrame(tk.Frame):
-    def __init__(self,master):
-        super().__init__(master,bg="#eef2f7"); self.build()
+    def __init__(self, master):
+        super().__init__(master,bg=COLORS['bg']); self.fields={}; self.build()
     def build(self):
-        tk.Label(self,text="Inventory & Products",bg="#eef2f7",fg="#102f4f",font=("Segoe UI",22,"bold")).pack(anchor="w")
-        top=tk.Frame(self,bg="white",padx=18,pady=14);top.pack(fill="x",pady=12)
-        self.f={}
-        labels=["SKU","Product Name","Category","Brand","Unit","Cost Price","Selling Price","Reorder Level"]
+        tk.Label(self,text='Products & Inventory',bg=COLORS['bg'],fg=COLORS['text'],font=(FONT,22,'bold')).pack(anchor='w')
+        tk.Label(self,text='Add products individually or import many products from an Excel workbook.',bg=COLORS['bg'],fg=COLORS['muted'],font=(FONT,9)).pack(anchor='w',pady=(2,12))
+        top=Card(self,padx=18,pady=14); top.pack(fill='x',pady=(0,12))
+        labels=['SKU','Product Name','Category','Brand','Unit','Cost Price','Selling Price','Reorder Level']
         for i,l in enumerate(labels):
-            tk.Label(top,text=l,bg="white",font=("Segoe UI",8,"bold")).grid(row=0,column=i,padx=3)
-            e=ttk.Entry(top,width=14);e.grid(row=1,column=i,padx=3,pady=4);self.f[l]=e
-        ttk.Button(top,text="ADD PRODUCT",command=self.add).grid(row=1,column=8,padx=8)
-        box=tk.Frame(self,bg="white",padx=10,pady=10);box.pack(fill="both",expand=True)
-        cols=("ID","SKU","Product","Category","Brand","Cost","Selling","Qty","Stock Value","Reorder","Status")
-        self.tree=ttk.Treeview(box,columns=cols,show="headings")
-        for c in cols:self.tree.heading(c,text=c);self.tree.column(c,width=105)
-        self.tree.column("Product",width=190);self.tree.pack(fill="both",expand=True)
+            tk.Label(top,text=l,bg='white',fg=COLORS['text'],font=(FONT,8,'bold')).grid(row=0,column=i,padx=3,sticky='w')
+            e=ttk.Entry(top,width=15); e.grid(row=1,column=i,padx=3,pady=5); self.fields[l]=e
+        ttk.Button(top,text='＋ ADD PRODUCT',style='Accent.TButton',command=self.add).grid(row=1,column=8,padx=7)
+        ttk.Button(top,text='⇩ IMPORT EXCEL',command=self.import_excel).grid(row=1,column=9,padx=7)
+        ttk.Button(top,text='⇧ TEMPLATE',command=self.template).grid(row=1,column=10,padx=7)
+        box=Card(self,padx=10,pady=10); box.pack(fill='both',expand=True)
+        cols=('ID','SKU','Product','Category','Brand','Unit','Cost','Selling','Qty','Stock Value','Reorder','Status')
+        frame,self.tree=tree_with_scrollbars(box,cols,{'ID':55,'SKU':120,'Product':190,'Category':110,'Brand':110,'Unit':70,'Cost':110,'Selling':110,'Qty':90,'Stock Value':130,'Reorder':90,'Status':90},height=18)
+        frame.pack(fill='both',expand=True)
         self.refresh()
     def add(self):
         try:
-            add_product(self.f["SKU"].get().strip(),self.f["Product Name"].get().strip(),
-                        self.f["Category"].get().strip(),self.f["Brand"].get().strip(),
-                        self.f["Unit"].get().strip() or "pcs",
-                        float(self.f["Cost Price"].get() or 0),
-                        float(self.f["Selling Price"].get() or 0),
-                        float(self.f["Reorder Level"].get() or 0))
-            messagebox.showinfo("Saved","Product added.")
-            for e in self.f.values():e.delete(0,"end")
-            self.refresh()
-        except Exception as e:messagebox.showerror("Error",str(e))
+            add_product(self.fields['SKU'].get().strip(),self.fields['Product Name'].get().strip(),self.fields['Category'].get().strip(),self.fields['Brand'].get().strip(),self.fields['Unit'].get().strip() or 'pcs',float(self.fields['Cost Price'].get().replace(',','') or 0),float(self.fields['Selling Price'].get().replace(',','') or 0),float(self.fields['Reorder Level'].get().replace(',','') or 0))
+            audit('PRODUCT_ADD',self.fields['SKU'].get().strip(),f"Product added: {self.fields['Product Name'].get().strip()}")
+            for e in self.fields.values():e.delete(0,'end')
+            self.refresh(); messagebox.showinfo('Saved','Product added successfully.')
+        except Exception as e: messagebox.showerror('Error',str(e))
+    def import_excel(self):
+        path=filedialog.askopenfilename(title='Select Product Excel File',filetypes=[('Excel Workbook','*.xlsx'),('Excel 97-2003','*.xls'),('All Files','*.*')])
+        if not path:return
+        try:
+            from openpyxl import load_workbook
+            wb=load_workbook(path,data_only=True,read_only=True); ws=wb.active
+            headers=[str(c.value or '').strip().lower() for c in next(ws.iter_rows(min_row=1,max_row=1))]
+            required=['sku','product name','category','brand','unit','cost price','selling price','reorder level']
+            aliases={'name':'product name','product':'product name','cost':'cost price','selling':'selling price','reorder':'reorder level'}
+            headers=[aliases.get(h,h) for h in headers]
+            idx={h:i for i,h in enumerate(headers)}
+            if 'sku' not in idx or 'product name' not in idx: raise ValueError('Excel must contain at least SKU and Product Name columns.')
+            rows=[]; errors=[]
+            for n,row in enumerate(ws.iter_rows(min_row=2,values_only=True),start=2):
+                if not any(v not in (None,'') for v in row): continue
+                def val(key,default=''):
+                    i=idx.get(key); return row[i] if i is not None and i<len(row) and row[i] is not None else default
+                try:
+                    rows.append((str(val('sku')).strip(),str(val('product name')).strip(),str(val('category')).strip(),str(val('brand')).strip(),str(val('unit','pcs')).strip() or 'pcs',float(val('cost price',0) or 0),float(val('selling price',0) or 0),float(val('reorder level',0) or 0)))
+                except Exception as ex: errors.append(f'Row {n}: {ex}')
+            if not rows: raise ValueError('No product rows found.')
+            con=get_connection()
+            try:
+                con.executemany('INSERT INTO products(sku,name,category,brand,unit,cost_price,selling_price,reorder_level) VALUES(?,?,?,?,?,?,?,?)',rows); con.commit()
+            except Exception: con.rollback(); raise
+            finally: con.close()
+            audit('PRODUCT_IMPORT',path,f'Imported {len(rows)} product(s) from Excel')
+            self.refresh(); msg=f'{len(rows)} product(s) imported successfully.'
+            if errors: msg += '\n\nSkipped rows:\n'+'\n'.join(errors[:10])
+            messagebox.showinfo('Excel Import',msg)
+        except ImportError: messagebox.showerror('Excel Import','openpyxl is required. Run: py -m pip install openpyxl')
+        except Exception as e: messagebox.showerror('Excel Import',str(e))
+    def template(self):
+        try:
+            from openpyxl import Workbook
+            path=filedialog.asksaveasfilename(title='Save Product Excel Template',defaultextension='.xlsx',filetypes=[('Excel Workbook','*.xlsx')],initialfile='products_import_template.xlsx')
+            if not path:return
+            wb=Workbook();ws=wb.active;ws.title='Products'
+            headers=['SKU','Product Name','Category','Brand','Unit','Cost Price','Selling Price','Reorder Level']; ws.append(headers)
+            ws.append(['SSD-001','Example SSD','SSD','ExampleBrand','pcs',20000,25000,5])
+            wb.save(path); messagebox.showinfo('Template','Excel template created.')
+        except Exception as e:messagebox.showerror('Template Error',str(e))
     def refresh(self):
-        for x in self.tree.get_children():self.tree.delete(x)
-        con=get_connection(); rows=con.execute("SELECT * FROM products WHERE active=1 ORDER BY name").fetchall()
+        for x in self.tree.get_children(): self.tree.delete(x)
+        con=get_connection(); rows=con.execute('SELECT * FROM products WHERE active=1 ORDER BY name').fetchall()
         for r in rows:
-            q,c=product_balance(r["id"]); status="LOW" if q<=r["reorder_level"] else "OK"
-            self.tree.insert("","end",values=(r["id"],r["sku"] or "",r["name"],r["category"] or "",r["brand"] or "",
-                f"{r['cost_price']:,.2f}",f"{r['selling_price']:,.2f}",f"{q:,.2f}",f"{c:,.2f}",f"{r['reorder_level']:,.2f}",status))
+            q,c=product_balance(r['id']); status='LOW' if q<=r['reorder_level'] else 'OK'
+            self.tree.insert('','end',values=(r['id'],r['sku'] or '',r['name'],r['category'] or '',r['brand'] or '',r['unit'] or 'pcs',f"{r['cost_price']:,.2f}",f"{r['selling_price']:,.2f}",f"{q:,.2f}",f"{c:,.2f}",f"{r['reorder_level']:,.2f}",status))
         con.close()

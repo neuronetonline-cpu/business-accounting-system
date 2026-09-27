@@ -2,6 +2,7 @@
 setlocal
 cd /d "%~dp0"
 py -m pip install --upgrade pip
+py -m pip install -r requirements.txt
 py -m pip install pyinstaller
 py -m PyInstaller --noconfirm --clean --onefile --windowed ^
   --name BusinessAccounting ^
