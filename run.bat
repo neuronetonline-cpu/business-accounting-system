@@ -1,3 +1,4 @@
 @echo off
-python "%~dp0business_accounting.py"
+cd /d "%~dp0"
+python -m app.main
 pause
