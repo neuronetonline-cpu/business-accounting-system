@@ -13,6 +13,8 @@ from app.ui.aging import AgingFrame
 from app.ui.inventory import InventoryFrame
 from app.ui.trade import TradeFrame
 from app.ui.bank import BankFrame,ReconciliationFrame,TransferFrame
+from app.ui.decision_dashboard import DecisionDashboardFrame
+from app.ui.admin import AdminFrame
 
 class MainApp(tk.Tk):
     def __init__(self):
@@ -24,12 +26,12 @@ class MainApp(tk.Tk):
         tk.Label(h,text="V5 + V6 • Inventory + Bank",bg="#102f4f",fg="#dce9f5",font=("Segoe UI",10)).pack(side="right",padx=24)
         nav=tk.Frame(self,bg="white");nav.pack(fill="x")
         buttons=[
-          ("Dashboard",self.dashboard),("Opening",self.opening),("Transaction",self.transactions),
+          ("Decision Dashboard",self.decision_dashboard),("Dashboard",self.dashboard),("Opening",self.opening),("Transaction",self.transactions),
           ("Customers",self.customers),("Suppliers",self.suppliers),
           ("Customer Credit",self.customer_credit),("Supplier Credit",self.supplier_credit),
           ("Products",self.inventory),("Sale",self.sale),("Purchase",self.purchase),
           ("Banks",self.banks),("Transfer",self.transfer),("Reconcile",self.reconcile),
-          ("Ledger",self.ledger),("Trial Balance",self.trial),("P&L",self.pnl),("Balance Sheet",self.bs)
+          ("Ledger",self.ledger),("Admin",self.admin),("Trial Balance",self.trial),("P&L",self.pnl),("Balance Sheet",self.bs)
         ]
         for label,cmd in buttons:ttk.Button(nav,text=label,command=cmd).pack(side="left",padx=2,pady=9)
         self.body=tk.Frame(self,bg="#eef2f7");self.body.pack(fill="both",expand=True,padx=22,pady=18)
@@ -38,6 +40,7 @@ class MainApp(tk.Tk):
         for w in self.body.winfo_children():w.destroy()
     def show(self,cls,*args):
         self.clear();cls(self.body,*args).pack(fill="both",expand=True)
+    def decision_dashboard(self):self.show(DecisionDashboardFrame)
     def dashboard(self):self.show(DashboardFrame)
     def opening(self):self.show(OpeningBalanceFrame,self.dashboard)
     def transactions(self):self.show(TransactionsFrame,self.dashboard)
@@ -51,6 +54,7 @@ class MainApp(tk.Tk):
     def banks(self):self.show(BankFrame)
     def transfer(self):self.show(lambda p:TransferFrame(p,self.dashboard))
     def reconcile(self):self.show(ReconciliationFrame)
+    def admin(self):self.show(AdminFrame)
     def ledger(self):self.show(LedgerFrame)
     def trial(self):self.show(TrialBalanceFrame)
     def pnl(self):self.show(PnLFrame)

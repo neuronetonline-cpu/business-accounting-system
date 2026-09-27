@@ -115,6 +115,14 @@ def init_database():
       status TEXT NOT NULL DEFAULT 'OPEN', UNIQUE(start_date,end_date));
 
     CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT);
+
+    CREATE TABLE IF NOT EXISTS audit_log(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      event_time TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      event_type TEXT NOT NULL,
+      reference TEXT,
+      description TEXT
+    );
     """)
     con.commit(); con.close()
 
