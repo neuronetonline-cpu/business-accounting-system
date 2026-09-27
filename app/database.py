@@ -133,6 +133,8 @@ def seed_accounts():
       ("1000","Cash","Asset",None),
       ("1010","Bank - Main","Asset",None),
       ("1020","Bank - Other","Asset",None),
+      ("1030","Card Receipts","Asset",None),
+      ("1040","COD Receivable","Asset",None),
       ("1100","Accounts Receivable","Asset",None),
       ("1200","Inventory","Asset",None),
       ("1300","Other Current Assets","Asset",None),

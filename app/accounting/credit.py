@@ -1,6 +1,7 @@
 
 from app.database import get_connection
 from app.accounting.engine import post_journal
+from app.accounting.audit import audit
 
 def create_customer_credit(customer_id, entry_date, reference, amount, due_date=None, description="Credit sale"):
     amount=float(amount)
@@ -16,6 +17,7 @@ def create_customer_credit(customer_id, entry_date, reference, amount, due_date=
             VALUES(?,?,?,?,?,?,?,?)""",
             (customer_id,entry_date,reference,"INVOICE",amount,0,due_date,jid))
         con.commit()
+        audit("CUSTOMER_CREDIT", reference, f"Customer credit invoice posted: {row['name']} / Rs. {amount:,.2f}")
         return jid
     except:
         con.rollback()
@@ -37,6 +39,7 @@ def create_customer_payment(customer_id, entry_date, reference, amount, account_
             VALUES(?,?,?,?,?,?,?,?)""",
             (customer_id,entry_date,reference,"PAYMENT",0,amount,None,jid))
         con.commit()
+        audit("CUSTOMER_PAYMENT", reference, f"Customer payment posted: {row['name']} / Rs. {amount:,.2f}")
         return jid
     except:
         con.rollback()
@@ -52,12 +55,13 @@ def create_supplier_credit(supplier_id, entry_date, reference, amount, due_date=
         row=con.execute("SELECT name FROM suppliers WHERE id=?",(supplier_id,)).fetchone()
         if not row: raise ValueError("Supplier not found.")
         jid=post_journal(entry_date,reference,description,
-                         [("5000",amount,0),("2000",0,amount)],"SUPPLIER_CREDIT")
+                         [("1200",amount,0),("2000",0,amount)],"SUPPLIER_CREDIT")
         con.execute("""INSERT INTO payable_entries
             (supplier_id,entry_date,reference,entry_type,debit,credit,due_date,journal_id)
             VALUES(?,?,?,?,?,?,?,?)""",
             (supplier_id,entry_date,reference,"BILL",0,amount,due_date,jid))
         con.commit()
+        audit("SUPPLIER_CREDIT", reference, f"Supplier credit invoice posted: {row['name']} / Rs. {amount:,.2f}")
         return jid
     except:
         con.rollback()
@@ -79,6 +83,7 @@ def create_supplier_payment(supplier_id, entry_date, reference, amount, account_
             VALUES(?,?,?,?,?,?,?,?)""",
             (supplier_id,entry_date,reference,"PAYMENT",amount,0,None,jid))
         con.commit()
+        audit("SUPPLIER_PAYMENT", reference, f"Supplier payment posted: {row['name']} / Rs. {amount:,.2f}")
         return jid
     except:
         con.rollback()

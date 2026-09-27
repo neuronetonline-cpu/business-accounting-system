@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from datetime import date
 
 from app.database import init_database, seed_accounts
 from app.ui.dashboard import DashboardFrame
@@ -14,7 +15,9 @@ from app.ui.trade import TradeFrame
 from app.ui.bank import BankFrame, ReconciliationFrame, TransferFrame
 from app.ui.decision_dashboard import DecisionDashboardFrame
 from app.ui.admin import AdminFrame
+from app.ui.pos_import import POSImportFrame
 from app.ui.theme import COLORS, FONT, configure_ttk
+from app.ui.widgets import ScrollableFrame
 
 
 class NavButton(tk.Button):
@@ -80,7 +83,7 @@ class MainApp(tk.Tk):
         date_box = tk.Frame(right, bg=COLORS["navy_2"], padx=14, pady=7)
         date_box.pack(side="left", pady=14, padx=6)
         tk.Label(date_box, text="TODAY", bg=COLORS["navy_2"], fg="#a9c2d9", font=(FONT, 8, "bold")).pack(anchor="w")
-        tk.Label(date_box, text="2026-09-27", bg=COLORS["navy_2"], fg="white", font=(FONT, 10, "bold")).pack(anchor="w")
+        tk.Label(date_box, text=date.today().isoformat(), bg=COLORS["navy_2"], fg="white", font=(FONT, 10, "bold")).pack(anchor="w")
         user_box = tk.Frame(right, bg=COLORS["navy_2"], padx=14, pady=7)
         user_box.pack(side="left", pady=14, padx=6)
         tk.Label(user_box, text="ADMIN", bg=COLORS["navy_2"], fg="white", font=(FONT, 10, "bold")).pack(anchor="w")
@@ -125,6 +128,7 @@ class MainApp(tk.Tk):
             ]),
             ("SYSTEM", [
                 ("Opening Balances", "◌", self.opening),
+                ("POS Import Center", "⇅", self.pos_import),
                 ("Administration", "⚙", self.admin),
                 ("Decision Dashboard", "◈", self.decision_dashboard),
             ]),
@@ -148,7 +152,7 @@ class MainApp(tk.Tk):
         self.page_hint = tk.Label(self.content_header, text="", bg=COLORS["bg"], fg=COLORS["muted"], font=(FONT, 9))
         self.page_hint.pack(side="right", anchor="center")
 
-        self.body = tk.Frame(content, bg=COLORS["bg"])
+        self.body = ScrollableFrame(content, bg=COLORS["bg"])
         self.body.pack(fill="both", expand=True, padx=22, pady=(0, 16))
 
     def _build_footer(self):
@@ -175,7 +179,7 @@ class MainApp(tk.Tk):
 
     def show(self, cls, *args, title=None):
         self.clear()
-        frame = cls(self.body, *args)
+        frame = cls(self.body.inner, *args)
         frame.pack(fill="both", expand=True)
         if title:
             self.page_title.configure(text=title)
@@ -236,6 +240,10 @@ class MainApp(tk.Tk):
     def reconcile(self):
         self.current_label = "Reconciliation"
         self.show(ReconciliationFrame, title="Bank Reconciliation")
+
+    def pos_import(self):
+        self.current_label = "POS Import Center"
+        self.show(POSImportFrame, self.dashboard, title="POS Import Center")
 
     def admin(self):
         self.current_label = "Administration"
