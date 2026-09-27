@@ -24,7 +24,51 @@ class InventoryFrame(tk.Frame):
         cols=('ID','SKU','Product','Category','Brand','Unit','Cost','Selling','Qty','Stock Value','Reorder','Status')
         frame,self.tree=tree_with_scrollbars(box,cols,{'ID':55,'SKU':120,'Product':190,'Category':110,'Brand':110,'Unit':70,'Cost':110,'Selling':110,'Qty':90,'Stock Value':130,'Reorder':90,'Status':90},height=18)
         frame.pack(fill='both',expand=True)
+        actions=tk.Frame(self,bg=COLORS['bg']); actions.pack(fill='x',pady=10)
+        ttk.Button(actions,text='EDIT SELECTED',command=self.edit_selected).pack(side='right')
+        ttk.Button(actions,text='DEACTIVATE SELECTED',command=self.deactivate).pack(side='right',padx=8)
+        ttk.Button(actions,text='DELETE SELECTED',command=self.delete_selected).pack(side='right',padx=8)
+        ttk.Button(actions,text='REFRESH',command=self.refresh).pack(side='right')
         self.refresh()
+    def selected(self):
+        sel=self.tree.selection()
+        if not sel:return None
+        pid=int(self.tree.item(sel[0])['values'][0]); con=get_connection(); r=con.execute('SELECT * FROM products WHERE id=?',(pid,)).fetchone(); con.close(); return r
+    def edit_selected(self):
+        r=self.selected()
+        if not r:return
+        win=tk.Toplevel(self); win.title('Edit Product'); win.geometry('620x520'); win.configure(bg=COLORS['bg'])
+        box=Card(win,padx=18,pady=18); box.pack(fill='both',expand=True,padx=15,pady=15); fields={}
+        labels=['SKU','Product Name','Category','Brand','Unit','Cost Price','Selling Price','Reorder Level']; keys=['sku','name','category','brand','unit','cost_price','selling_price','reorder_level']
+        for i,(lab,key) in enumerate(zip(labels,keys)):
+            tk.Label(box,text=lab,bg='white',font=(FONT,9,'bold')).grid(row=i,column=0,sticky='w',pady=6);e=ttk.Entry(box,width=45);e.insert(0,str(r[key] or ''));e.grid(row=i,column=1,padx=12,pady=6);fields[key]=e
+        def save():
+            try:
+                vals=[fields[k].get().strip() for k in keys]; vals[5]=float(vals[5].replace(',','') or 0); vals[6]=float(vals[6].replace(',','') or 0); vals[7]=float(vals[7].replace(',','') or 0)
+                if not vals[1]:raise ValueError('Product Name is required.')
+                con=get_connection();dup=con.execute('SELECT id FROM products WHERE sku=? AND id<>?',(vals[0] or None,r['id'])).fetchone() if vals[0] else None
+                if dup:raise ValueError('SKU already exists.')
+                con.execute('UPDATE products SET sku=?,name=?,category=?,brand=?,unit=?,cost_price=?,selling_price=?,reorder_level=? WHERE id=?',(*vals,r['id']));con.commit();con.close();audit('PRODUCT_EDIT',str(r['id']),f'Product edited: {vals[1]}');messagebox.showinfo('Saved','Product updated successfully.');win.destroy();self.refresh()
+            except Exception as e:messagebox.showerror('Edit Error',str(e))
+        ttk.Button(win,text='SAVE CHANGES',style='Accent.TButton',command=save).pack(side='right',padx=20,pady=(0,15));ttk.Button(win,text='CANCEL',command=win.destroy).pack(side='right',padx=8,pady=(0,15))
+    def delete_selected(self):
+        r=self.selected()
+        if not r:return
+        try:
+            con=get_connection();linked=0
+            for table in ('stock_movements','sale_items','purchase_items'):
+                linked += con.execute(f'SELECT COUNT(*) n FROM {table} WHERE product_id=?',(r['id'],)).fetchone()['n']
+            con.close()
+            if linked:
+                messagebox.showinfo('Cannot Delete','This product has stock or transaction history. Use DEACTIVATE instead so history is preserved.');return
+            if not messagebox.askyesno('Delete',f'Delete {r["name"]}? This cannot be undone.'):return
+            con=get_connection();con.execute('DELETE FROM products WHERE id=?',(r['id'],));con.commit();con.close();audit('PRODUCT_DELETE',str(r['id']),f'Product deleted: {r["name"]}');self.refresh()
+        except Exception as e:messagebox.showerror('Delete Error',str(e))
+    def deactivate(self):
+        r=self.selected()
+        if not r:return
+        if not messagebox.askyesno('Deactivate',f'Deactivate {r["name"]}?\n\nStock and transaction history will be preserved.'):return
+        con=get_connection();con.execute('UPDATE products SET active=0 WHERE id=?',(r['id'],));con.commit();con.close();audit('PRODUCT_DEACTIVATE',str(r['id']),f'Product deactivated: {r["name"]}');self.refresh()
     def add(self):
         try:
             add_product(self.fields['SKU'].get().strip(),self.fields['Product Name'].get().strip(),self.fields['Category'].get().strip(),self.fields['Brand'].get().strip(),self.fields['Unit'].get().strip() or 'pcs',float(self.fields['Cost Price'].get().replace(',','') or 0),float(self.fields['Selling Price'].get().replace(',','') or 0),float(self.fields['Reorder Level'].get().replace(',','') or 0))

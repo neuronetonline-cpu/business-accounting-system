@@ -6,6 +6,22 @@ APP_DIR = Path.home() / "BusinessAccountingSystem"
 APP_DIR.mkdir(exist_ok=True)
 DB_PATH = APP_DIR / "business.db"
 
+def get_setting(key, default=None):
+    con = get_connection()
+    try:
+        row = con.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+        return row["value"] if row else default
+    finally:
+        con.close()
+
+def set_setting(key, value):
+    con = get_connection()
+    try:
+        con.execute("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, str(value)))
+        con.commit()
+    finally:
+        con.close()
+
 def get_connection():
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
@@ -126,6 +142,7 @@ def init_database():
       description TEXT
     );
     """)
+    con.execute("INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)", ("backup_dir", str(APP_DIR / "backups")))
     con.commit(); con.close()
 
 def seed_accounts():
