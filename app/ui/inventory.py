@@ -77,34 +77,79 @@ class InventoryFrame(tk.Frame):
             self.refresh(); messagebox.showinfo('Saved','Product added successfully.')
         except Exception as e: messagebox.showerror('Error',str(e))
     def import_excel(self):
-        path=filedialog.askopenfilename(title='Select Product Excel File',filetypes=[('Excel Workbook','*.xlsx'),('Excel 97-2003','*.xls'),('All Files','*.*')])
+        path=filedialog.askopenfilename(title='Select Product / POS Stock Excel File',filetypes=[('Excel Workbook','*.xlsx'),('Excel 97-2003','*.xls'),('All Files','*.*')])
         if not path:return
         try:
             from openpyxl import load_workbook
+            from datetime import datetime, date
+            import re
             wb=load_workbook(path,data_only=True,read_only=True); ws=wb.active
-            headers=[str(c.value or '').strip().lower() for c in next(ws.iter_rows(min_row=1,max_row=1))]
-            required=['sku','product name','category','brand','unit','cost price','selling price','reorder level']
+            rows_iter=ws.iter_rows(values_only=True); header=next(rows_iter,None)
+            if not header: raise ValueError('Empty Excel workbook.')
+            raw_headers=[str(c or '').strip().lower() for c in header]
+            norm_headers={re.sub(r'[^a-z0-9]+',' ',h).strip():i for i,h in enumerate(raw_headers)}
+            pos_required={'name','barcode','cost price','sale price','total stock'}
+            if pos_required.issubset(set(norm_headers.keys())):
+                def idx(*names):
+                    for n in names:
+                        if n in norm_headers:return norm_headers[n]
+                    return None
+                name_i,sku_i,cost_i,sale_i,qty_i,date_i=idx('name'),idx('barcode'),idx('cost price'),idx('sale price'),idx('total stock'),idx('date')
+                data=[]; dates=[]
+                for n,row in enumerate(rows_iter,start=2):
+                    if not row or all(v in (None,'') for v in row): continue
+                    name=str(row[name_i] or '').strip()
+                    if not name: continue
+                    sku=str(row[sku_i] or '').strip() if sku_i is not None else ''
+                    def num(v): return float(str(v or 0).replace(',','').replace('Rs.','').strip() or 0)
+                    cost,sale,qty=num(row[cost_i]),num(row[sale_i]),num(row[qty_i])
+                    if qty < 0: raise ValueError(f'Negative stock at Excel row {n}: {name}')
+                    if date_i is not None and row[date_i]:
+                        try:
+                            dv=row[date_i]
+                            d=dv.date() if isinstance(dv,(datetime,date)) else datetime.strptime(str(dv).strip(),'%b %d, %Y').date()
+                            dates.append(d)
+                        except Exception: pass
+                    data.append((sku,name,cost,sale,qty))
+                if not data: raise ValueError('No POS stock rows found.')
+                opening_date=max(dates).isoformat() if dates else date.today().isoformat()
+                if not messagebox.askyesno('POS Stock Report Detected',f'This Excel file matches the POS stock report format.\n\nProducts found: {len(data)}\nOpening stock date: {opening_date}\n\nImport products and use TOTAL STOCK as opening stock for that date?'): return
+                con=get_connection(); created=updated=stock_rows=0
+                try:
+                    for sku,name,cost,sale,qty in data:
+                        product=None
+                        if sku: product=con.execute('SELECT * FROM products WHERE sku=?',(sku,)).fetchone()
+                        if not product: product=con.execute('SELECT * FROM products WHERE lower(name)=lower(?)',(name,)).fetchone()
+                        if product:
+                            pid=product['id']; con.execute('UPDATE products SET sku=CASE WHEN ?<>'' THEN ? ELSE sku END,name=?,cost_price=?,selling_price=? WHERE id=?',(sku,sku,name,cost,sale,pid)); updated+=1
+                        else:
+                            con.execute('INSERT INTO products(sku,name,cost_price,selling_price) VALUES(?,?,?,?)',(sku or None,name,cost,sale)); pid=con.execute('SELECT last_insert_rowid()').fetchone()[0]; created+=1
+                        con.execute("DELETE FROM stock_movements WHERE product_id=? AND movement_date=? AND movement_type='OPENING'",(pid,opening_date))
+                        if qty:
+                            con.execute('INSERT INTO stock_movements(product_id,movement_date,reference,movement_type,qty,unit_cost,total_cost) VALUES(?,?,?,?,?,?,?)',(pid,opening_date,'POS-STOCK-IMPORT','OPENING',qty,cost,round(qty*cost,2))); stock_rows+=1
+                    con.commit()
+                except Exception: con.rollback(); raise
+                finally: con.close()
+                audit('PRODUCT_POS_STOCK_IMPORT',path,f'POS stock import: {len(data)} products, {stock_rows} opening stock rows, date {opening_date}')
+                self.refresh(); messagebox.showinfo('POS Stock Import',f'POS stock report imported successfully.\n\nProducts: {len(data)}\nNew products: {created}\nUpdated products: {updated}\nOpening stock rows: {stock_rows}\nOpening date: {opening_date}')
+                return
             aliases={'name':'product name','product':'product name','cost':'cost price','selling':'selling price','reorder':'reorder level'}
-            headers=[aliases.get(h,h) for h in headers]
-            idx={h:i for i,h in enumerate(headers)}
-            if 'sku' not in idx or 'product name' not in idx: raise ValueError('Excel must contain at least SKU and Product Name columns.')
+            headers=[aliases.get(h,h) for h in raw_headers]; idxmap={h:i for i,h in enumerate(headers)}
+            if 'sku' not in idxmap or 'product name' not in idxmap: raise ValueError('Excel must contain SKU and Product Name columns, or use the POS Stock Report format (NAME, BARCODE, COST PRICE, SALE PRICE, TOTAL STOCK).')
             rows=[]; errors=[]
-            for n,row in enumerate(ws.iter_rows(min_row=2,values_only=True),start=2):
+            for n,row in enumerate(rows_iter,start=2):
                 if not any(v not in (None,'') for v in row): continue
                 def val(key,default=''):
-                    i=idx.get(key); return row[i] if i is not None and i<len(row) and row[i] is not None else default
-                try:
-                    rows.append((str(val('sku')).strip(),str(val('product name')).strip(),str(val('category')).strip(),str(val('brand')).strip(),str(val('unit','pcs')).strip() or 'pcs',float(val('cost price',0) or 0),float(val('selling price',0) or 0),float(val('reorder level',0) or 0)))
+                    i=idxmap.get(key); return row[i] if i is not None and i<len(row) and row[i] is not None else default
+                try: rows.append((str(val('sku')).strip(),str(val('product name')).strip(),str(val('category')).strip(),str(val('brand')).strip(),str(val('unit','pcs')).strip() or 'pcs',float(val('cost price',0) or 0),float(val('selling price',0) or 0),float(val('reorder level',0) or 0)))
                 except Exception as ex: errors.append(f'Row {n}: {ex}')
             if not rows: raise ValueError('No product rows found.')
             con=get_connection()
-            try:
-                con.executemany('INSERT INTO products(sku,name,category,brand,unit,cost_price,selling_price,reorder_level) VALUES(?,?,?,?,?,?,?,?)',rows); con.commit()
+            try: con.executemany('INSERT INTO products(sku,name,category,brand,unit,cost_price,selling_price,reorder_level) VALUES(?,?,?,?,?,?,?,?)',rows); con.commit()
             except Exception: con.rollback(); raise
             finally: con.close()
-            audit('PRODUCT_IMPORT',path,f'Imported {len(rows)} product(s) from Excel')
-            self.refresh(); msg=f'{len(rows)} product(s) imported successfully.'
-            if errors: msg += '\n\nSkipped rows:\n'+'\n'.join(errors[:10])
+            audit('PRODUCT_IMPORT',path,f'Imported {len(rows)} product(s) from Excel'); self.refresh(); msg=f'{len(rows)} product(s) imported successfully.'
+            if errors: msg+='\n\nSkipped rows:\n'+'\n'.join(errors[:10])
             messagebox.showinfo('Excel Import',msg)
         except ImportError: messagebox.showerror('Excel Import','openpyxl is required. Run: py -m pip install openpyxl')
         except Exception as e: messagebox.showerror('Excel Import',str(e))

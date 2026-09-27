@@ -94,9 +94,38 @@ class MainApp(tk.Tk):
         shell = tk.Frame(self, bg=COLORS["bg"])
         shell.pack(fill="both", expand=True)
 
+        # Scrollable navigation sidebar.  The menu contains more items than a
+        # small laptop/desktop window can display, so keep the sidebar fixed in
+        # width but allow vertical scrolling.
         self.sidebar = tk.Frame(shell, bg=COLORS["navy"], width=225)
         self.sidebar.pack(side="left", fill="y")
         self.sidebar.pack_propagate(False)
+
+        self.sidebar_canvas = tk.Canvas(
+            self.sidebar, bg=COLORS["navy"], highlightthickness=0, bd=0,
+            width=225, yscrollincrement=20
+        )
+        self.sidebar_scrollbar = tk.Scrollbar(
+            self.sidebar, orient="vertical", command=self.sidebar_canvas.yview,
+            width=10, bg=COLORS["navy_2"], troughcolor=COLORS["navy"],
+            activebackground=COLORS["blue"], relief="flat", bd=0
+        )
+        self.sidebar_canvas.configure(yscrollcommand=self.sidebar_scrollbar.set)
+        self.sidebar_scrollbar.pack(side="right", fill="y")
+        self.sidebar_canvas.pack(side="left", fill="both", expand=True)
+
+        self.sidebar_inner = tk.Frame(self.sidebar_canvas, bg=COLORS["navy"], width=215)
+        self.sidebar_window = self.sidebar_canvas.create_window(
+            (0, 0), window=self.sidebar_inner, anchor="nw", width=215
+        )
+        self.sidebar_inner.bind(
+            "<Configure>",
+            lambda e: self.sidebar_canvas.configure(scrollregion=self.sidebar_canvas.bbox("all"))
+        )
+        self.sidebar_canvas.bind(
+            "<Configure>",
+            lambda e: self.sidebar_canvas.itemconfigure(self.sidebar_window, width=max(205, e.width))
+        )
 
         # Navigation groups
         groups = [
@@ -135,11 +164,21 @@ class MainApp(tk.Tk):
         ]
 
         for title, items in groups:
-            tk.Label(self.sidebar, text=title, bg=COLORS["navy"], fg="#8fb0cc", font=(FONT, 8, "bold"), anchor="w").pack(fill="x", padx=18, pady=(12, 4))
+            tk.Label(self.sidebar_inner, text=title, bg=COLORS["navy"], fg="#8fb0cc", font=(FONT, 8, "bold"), anchor="w").pack(fill="x", padx=18, pady=(12, 4))
             for label, icon, cmd in items:
-                btn = NavButton(self.sidebar, label, lambda c=cmd, l=label: self._navigate(c, l), icon=icon)
+                btn = NavButton(self.sidebar_inner, label, lambda c=cmd, l=label: self._navigate(c, l), icon=icon)
                 btn.pack(fill="x", padx=9, pady=1)
                 self.nav_buttons[label] = btn
+
+        # Mouse-wheel scrolling while the pointer is over the navigation.
+        def _sidebar_wheel(event):
+            if event.delta:
+                self.sidebar_canvas.yview_scroll(int(-event.delta / 120), "units")
+            return "break"
+
+        self.sidebar_canvas.bind("<MouseWheel>", _sidebar_wheel)
+        self.sidebar_inner.bind("<MouseWheel>", _sidebar_wheel)
+        self.sidebar_scrollbar.bind("<MouseWheel>", _sidebar_wheel)
 
         content = tk.Frame(shell, bg=COLORS["bg"])
         content.pack(side="left", fill="both", expand=True)

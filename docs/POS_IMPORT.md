@@ -16,3 +16,4 @@ The POS Import Center supports the current EASY POS monthly Sales Report PDF for
 - Bill numbers are checked against existing sales to prevent duplicate imports.
 - Payment types map to Cash, selected Bank, Card Receipts, COD Receivable, or Customer Receivable.
 - POS final bill totals are posted as revenue; POS item costs are used for COGS and inventory reduction.
+\n\nPOS-M5 Stock Excel format is supported in Products & Stock. DATE/NAME/BARCODE/COST PRICE/SALE PRICE/TOTAL STOCK are detected automatically; user confirms before TOTAL STOCK is recorded as opening stock.\n

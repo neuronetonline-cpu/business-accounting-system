@@ -25,32 +25,59 @@ class POSImportFrame(tk.Frame):
         ttk.Button(top,text='IMPORT OPENING STOCK EXCEL',style='Accent.TButton',command=self.import_stock).grid(row=1,column=1,padx=6)
         ttk.Button(top,text='REFRESH',command=self.refresh_opening).grid(row=1,column=2,padx=6)
         self.stock_label=tk.Label(top,text='Opening stock: Rs. 0.00',bg='white',fg=COLORS['blue'],font=(FONT,10,'bold')); self.stock_label.grid(row=1,column=3,padx=18)
+
         body=Card(self.opening_tab,padx=16,pady=14); body.pack(fill='both',expand=True)
-        tk.Label(body,text='Cash & Bank balances',bg='white',fg=COLORS['text'],font=(FONT,13,'bold')).pack(anchor='w')
-        self.balance_frame=tk.Frame(body,bg='white'); self.balance_frame.pack(fill='x',pady=(8,12)); self.balance_entries={}
+        tk.Label(body,text='Opening Position',bg='white',fg=COLORS['text'],font=(FONT,13,'bold')).pack(anchor='w')
+        tk.Label(body,text='Cash, active bank accounts and other opening balances. Inventory is imported from the POS stock Excel.',bg='white',fg=COLORS['muted'],font=(FONT,9)).pack(anchor='w',pady=(2,8))
+        self.balance_frame=tk.Frame(body,bg='white'); self.balance_frame.pack(fill='both',expand=True,pady=(4,4)); self.balance_entries={}
         self.refresh_opening()
+
         bottom=Card(self.opening_tab,padx=16,pady=14); bottom.pack(fill='x',pady=(10,0))
-        tk.Label(bottom,text='Optional opening balances',bg='white',fg=COLORS['text'],font=(FONT,12,'bold')).grid(row=0,column=0,columnspan=4,sticky='w')
-        opts=[('1100','Customer Receivables'),('2000','Supplier Payables'),('1300','Other Assets'),('2100','Other Liabilities')]
-        self.optional={}
-        for i,(code,label) in enumerate(opts):
-            tk.Label(bottom,text=label,bg='white',font=(FONT,9,'bold')).grid(row=1,column=i,sticky='w',padx=4)
-            e=ttk.Entry(bottom,width=18); e.grid(row=2,column=i,padx=4,pady=5); self.optional[code]=e
-        self.save_btn=ttk.Button(bottom,text='SAVE / UPDATE OPENING POSITION',style='Accent.TButton',command=self.save_opening); self.save_btn.grid(row=3,column=0,columnspan=4,sticky='w',pady=12)
-        self.opening_status=tk.Label(bottom,text='',bg='white',fg=COLORS['muted'],font=(FONT,9)); self.opening_status.grid(row=3,column=4,padx=15,sticky='w')
+        tk.Label(bottom,text='Opening Balance Notes',bg='white',fg=COLORS['text'],font=(FONT,10,'bold')).grid(row=0,column=0,sticky='w')
+        tk.Label(bottom,text='You can leave unknown balances blank and add/correct them later from Opening Balances.',bg='white',fg=COLORS['muted'],font=(FONT,9)).grid(row=1,column=0,sticky='w',pady=(2,6))
+        self.save_btn=ttk.Button(bottom,text='SAVE / UPDATE OPENING POSITION',style='Accent.TButton',command=self.save_opening); self.save_btn.grid(row=2,column=0,sticky='w',pady=8)
+        self.opening_status=tk.Label(bottom,text='',bg='white',fg=COLORS['muted'],font=(FONT,9)); self.opening_status.grid(row=2,column=1,padx=15,sticky='w')
 
     def refresh_opening(self):
         for w in self.balance_frame.winfo_children(): w.destroy()
         self.balance_entries={}
-        rows=[('1000','Cash')]
-        con=get_connection(); banks=con.execute("SELECT ledger_code,name FROM bank_accounts WHERE active=1 ORDER BY name").fetchall(); con.close()
-        rows += [(r['ledger_code'],f"Bank - {r['name']}") for r in banks]
-        if not banks: rows += [('1010','Bank - Main'),('1020','Bank - Other')]
-        for i,(code,label) in enumerate(rows):
-            tk.Label(self.balance_frame,text=label,bg='white',fg=COLORS['text'],font=(FONT,9,'bold')).grid(row=i//3*2,column=i%3*2,sticky='w',padx=6,pady=(4,0))
-            e=ttk.Entry(self.balance_frame,width=20); e.grid(row=i//3*2+1,column=i%3*2,padx=6,pady=(3,6),sticky='w'); self.balance_entries[code]=e
-        self.stock_label.config(text=f'Opening stock: Rs. {opening_stock_value(self.odate.get().strip()):,.2f}')
+        con=get_connection()
+        banks=con.execute("SELECT ledger_code,name FROM bank_accounts WHERE active=1 ORDER BY name").fetchall()
+        # Show the same accounting accounts used by the main Opening Balances screen,
+        # while replacing generic Bank-Main/Bank-Other with real bank accounts.
+        base=con.execute("SELECT code,name FROM accounts WHERE account_type IN ('Asset','Liability','Equity') ORDER BY CAST(code AS INTEGER), code").fetchall()
+        con.close()
 
+        rows=[]
+        for r in base:
+            code=r['code']; name=r['name']
+            if code == '1000':
+                rows.append((code,name,'editable'))
+            elif code in ('1010','1020'):
+                # Real bank accounts are shown below instead of generic bank buckets.
+                if not banks and code == '1010': rows.append((code,name,'editable'))
+            elif code == '1200':
+                rows.append((code,name,'stock'))
+            else:
+                rows.append((code,name,'editable'))
+        # Add all actual bank accounts from Banks & Cash.
+        bank_rows=[(r['ledger_code'],f"Bank - {r['name']}",'editable') for r in banks]
+        # Put Cash first, then actual banks, then other accounting balances.
+        cash=[r for r in rows if r[0]=='1000']
+        others=[r for r in rows if r[0] not in ('1000','1010','1020')]
+        rows=cash+bank_rows+others
+
+        for i,(code,label,kind) in enumerate(rows):
+            col=i%3; rr=(i//3)*2
+            tk.Label(self.balance_frame,text=f'{code}  {label}',bg='white',fg=COLORS['text'],font=(FONT,9,'bold')).grid(row=rr,column=col*2,sticky='w',padx=6,pady=(4,0))
+            if kind=='stock':
+                value=opening_stock_value(self.odate.get().strip())
+                e=ttk.Entry(self.balance_frame,width=20); e.insert(0,f'{value:.2f}' if value else ''); e.configure(state='readonly')
+                e.grid(row=rr+1,column=col*2,padx=6,pady=(3,6),sticky='w')
+            else:
+                e=ttk.Entry(self.balance_frame,width=20); e.grid(row=rr+1,column=col*2,padx=6,pady=(3,6),sticky='w')
+            self.balance_entries[code]=e
+        self.stock_label.config(text=f'Opening stock: Rs. {opening_stock_value(self.odate.get().strip()):,.2f}')
     def import_stock(self):
         path=filedialog.askopenfilename(title='Select August 31 Opening Stock',filetypes=[('Excel','*.xlsx'),('All files','*.*')])
         if not path:return
@@ -66,9 +93,6 @@ class POSImportFrame(tk.Frame):
                 if v: balances[code]=float(v)
             sv=opening_stock_value(self.odate.get().strip())
             if sv: balances['1200']=sv
-            for code,e in self.optional.items():
-                v=e.get().replace(',','').strip()
-                if v: balances[code]=float(v)
             if not balances: raise ValueError('Enter at least one opening balance or import opening stock.')
             latest=get_latest_opening()
             if latest and latest['entry_date']==self.odate.get().strip():
