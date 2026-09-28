@@ -4,7 +4,7 @@ from app.database import get_connection
 from app.accounting.engine import update_manual_journal
 from app.accounting.audit import audit
 from app.ui.theme import COLORS, FONT
-from app.ui.widgets import Card, tree_with_scrollbars
+from app.ui.widgets import Card, tree_with_scrollbars, SearchableCombobox
 
 class LedgerEditDialog(tk.Toplevel):
     def __init__(self, parent, journal_id):
@@ -23,7 +23,7 @@ class LedgerEditDialog(tk.Toplevel):
         ttk.Button(btns,text='+ ADD LINE',command=lambda:self.add_line()).pack(side='left'); ttk.Button(btns,text='SAVE CHANGES',style='Accent.TButton',command=self.save).pack(side='right'); ttk.Button(btns,text='CANCEL',command=self.destroy).pack(side='right',padx=8)
     def add_line(self,code='',debit=0,credit=0):
         row=tk.Frame(self.lines_frame,bg='white'); row.pack(fill='x',pady=3)
-        account=ttk.Combobox(row,values=self.accounts,width=38,state='readonly');
+        account=SearchableCombobox(row,values=self.accounts,width=38);
         if code:
             match=[x for x in self.accounts if x.startswith(code+' - ')];
             if match: account.set(match[0])

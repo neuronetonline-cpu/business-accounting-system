@@ -6,7 +6,7 @@ from app.accounting.inventory import create_purchase, create_sale, add_product
 from app.accounting.purchase_import import import_purchase_excel, commit_purchase_import, create_purchase_template
 from app.accounting.audit import audit
 from app.ui.theme import COLORS, FONT
-from app.ui.widgets import Card
+from app.ui.widgets import Card, SearchableCombobox
 
 class TradeFrame(tk.Frame):
     def __init__(self,master,mode='sale',on_saved=None):
@@ -21,7 +21,7 @@ class TradeFrame(tk.Frame):
             tk.Label(box,text=l,bg='white',font=(FONT,9,'bold')).grid(row=i,column=0,sticky='w',pady=7)
             if l=='Product':
                 holder=tk.Frame(box,bg='white');holder.grid(row=i,column=1,padx=18,sticky='w',pady=7)
-                w=ttk.Combobox(holder,values=self.products(),state='readonly',width=34)
+                w=SearchableCombobox(holder,values=self.products(),width=34)
                 if self.products():w.current(0)
                 w.pack(side='left'); self.product_combo=w
                 if self.mode=='purchase':
@@ -29,7 +29,7 @@ class TradeFrame(tk.Frame):
             elif l=='Payment Type':
                 w=ttk.Combobox(box,values=['Cash','Bank','Credit'],state='readonly',width=38);w.current(0);w.grid(row=i,column=1,padx=18,sticky='w',pady=7)
             elif l=='Customer / Supplier':
-                w=ttk.Combobox(box,values=self.entities(),state='readonly',width=38)
+                w=SearchableCombobox(box,values=self.entities(),width=38)
                 if self.entities():w.current(0)
                 w.grid(row=i,column=1,padx=18,sticky='w',pady=7)
             else:
@@ -49,7 +49,7 @@ class TradeFrame(tk.Frame):
         table='customers' if self.mode=='sale' else 'suppliers';con=get_connection();r=con.execute(f'SELECT id,name FROM {table} WHERE active=1 ORDER BY name').fetchall();con.close()
         return ['0 - Walk-in / None']+[f"{x['id']} - {x['name']}" for x in r]
     def refresh_products(self,select_id=None):
-        values=self.products();self.product_combo['values']=values
+        values=self.products();self.product_combo.set_values(values)
         if select_id is not None:
             for i,v in enumerate(values):
                 if int(v.split(' - ')[0])==select_id:self.product_combo.current(i);break

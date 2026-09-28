@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from datetime import date
 from app.ui.theme import COLORS, FONT
-from app.ui.widgets import Card, tree_with_scrollbars
+from app.ui.widgets import Card, tree_with_scrollbars, SearchableCombobox
 from app.database import get_connection
 from app.accounting.pos_import import parse_sales_pdf, import_sales, import_opening_stock_xlsx, opening_stock_value
 from app.accounting.engine import create_opening_balance, get_latest_opening, update_opening_balance
@@ -113,7 +113,7 @@ class POSImportFrame(tk.Frame):
         top=Card(self.sales_tab,padx=16,pady=14); top.pack(fill='x',pady=(0,10))
         ttk.Button(top,text='SELECT POS SALES PDF',style='Accent.TButton',command=self.select_pdf).pack(side='left')
         tk.Label(top,text='Bank account for POS Bank Transfer/Deposit:',bg='white',font=(FONT,9,'bold')).pack(side='left',padx=(20,6))
-        self.bank_combo=ttk.Combobox(top,state='readonly',width=32); self.bank_combo.pack(side='left'); self.refresh_bank_choices()
+        self.bank_combo=SearchableCombobox(top,width=32); self.bank_combo.pack(side='left'); self.refresh_bank_choices()
         ttk.Button(top,text='IMPORT SELECTED',command=self.do_import).pack(side='left',padx=8)
         self.file_label=tk.Label(top,text='No PDF selected',bg='white',fg=COLORS['muted'],font=(FONT,8)); self.file_label.pack(side='right')
         box=Card(self.sales_tab,padx=10,pady=10); box.pack(fill='both',expand=True)
@@ -124,7 +124,7 @@ class POSImportFrame(tk.Frame):
         con=get_connection(); rows=con.execute("SELECT ledger_code,name FROM bank_accounts WHERE active=1 ORDER BY name").fetchall(); con.close()
         vals=[f"{r['ledger_code']} - {r['name']}" for r in rows]
         if not vals: vals=['1010 - Bank - Main']
-        self.bank_combo['values']=vals; self.bank_combo.current(0)
+        self.bank_combo.set_values(vals); self.bank_combo.current(0)
 
     def select_pdf(self):
         path=filedialog.askopenfilename(title='Select POS Sales Report PDF',filetypes=[('PDF','*.pdf'),('All files','*.*')])

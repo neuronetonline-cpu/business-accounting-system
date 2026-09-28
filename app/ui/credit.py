@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import date
 from app.database import get_connection
+from app.ui.widgets import SearchableCombobox
 from app.accounting.credit import (
     create_customer_credit, create_customer_payment,
     create_supplier_credit, create_supplier_payment
@@ -33,7 +34,7 @@ class CreditFrame(tk.Frame):
                 w=ttk.Combobox(box,values=["Credit Invoice","Payment"],state="readonly",width=36);w.current(0)
                 w.bind("<<ComboboxSelected>>",lambda e:self.refresh_preview())
             elif l=="Name":
-                w=ttk.Combobox(box,values=self.names(),state="readonly",width=36)
+                w=SearchableCombobox(box,values=self.names(),width=36)
                 if self.names():w.current(0)
                 w.bind("<<ComboboxSelected>>",lambda e:self.refresh_preview())
             elif l=="Account":

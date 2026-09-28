@@ -26,6 +26,65 @@ class ScrollableFrame(tk.Frame):
             try: self.canvas.yview_scroll(int(-event.delta/120), 'units')
             except tk.TclError: pass
 
+
+class SearchableCombobox(ttk.Combobox):
+    """A keyboard-friendly searchable combobox for long lists.
+
+    Users can type part of a value, and the list is filtered case-insensitively.
+    Exact/selected values are preserved so existing code can continue using .get().
+    """
+    def __init__(self, master=None, values=(), **kwargs):
+        self._all_values = [str(v) for v in values]
+        kwargs.setdefault("state", "normal")
+        super().__init__(master, values=self._all_values, **kwargs)
+        self.bind("<KeyRelease>", self._search_key, add="+")
+        self.bind("<FocusIn>", self._focus_in, add="+")
+        self.bind("<FocusOut>", self._focus_out, add="+")
+        self.bind("<Return>", self._accept_first, add="+")
+        self.bind("<<ComboboxSelected>>", self._selected, add="+")
+
+    def set_values(self, values, selected=None):
+        self._all_values = [str(v) for v in values]
+        self.configure(values=self._all_values)
+        if selected is not None:
+            self.set(str(selected))
+        elif self.get() not in self._all_values:
+            self.set(self._all_values[0] if self._all_values else "")
+
+    def _focus_in(self, _event=None):
+        self.configure(values=self._all_values)
+
+    def _focus_out(self, _event=None):
+        text=self.get().strip()
+        if not text:
+            return
+        exact=next((v for v in self._all_values if v.lower()==text.lower()),None)
+        if exact:
+            self.set(exact); return
+        matches=[v for v in self._all_values if text.lower() in v.lower()]
+        if len(matches)==1:
+            self.set(matches[0])
+
+    def _search_key(self, event=None):
+        if event and event.keysym in ("Up","Down","Left","Right","Return","Escape","Tab","Shift_L","Shift_R","Control_L","Control_R","Alt_L","Alt_R"):
+            return
+        text=self.get().strip().lower()
+        matches=[v for v in self._all_values if text in v.lower()] if text else list(self._all_values)
+        self.configure(values=matches)
+
+    def _accept_first(self, _event=None):
+        vals=list(self.cget("values"))
+        if vals:
+            text=self.get().strip().lower()
+            exact=next((v for v in vals if v.lower()==text),None)
+            self.set(exact or vals[0])
+        return "break"
+
+    def _selected(self, _event=None):
+        # Restore the complete list after a selection so the next search starts clean.
+        self.after_idle(lambda: self.configure(values=self._all_values) if self.winfo_exists() else None)
+
+
 class Card(tk.Frame):
     def __init__(self, master, **kwargs):
         super().__init__(master, bg=COLORS['surface'], highlightbackground=COLORS['border'], highlightthickness=1, **kwargs)

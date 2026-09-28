@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk,messagebox
 from app.database import get_connection
 from app.accounting.audit import audit
+from app.ui.widgets import SearchableCombobox
 
 class BankEditDialog(tk.Toplevel):
     def __init__(self,parent,row):
@@ -97,7 +98,7 @@ class ReconciliationFrame(tk.Frame):
     def build(self):
         tk.Label(self,text='Bank Reconciliation',bg='#eef2f7',fg='#102f4f',font=('Segoe UI',22,'bold')).pack(anchor='w')
         box=tk.Frame(self,bg='white',padx=24,pady=20);box.pack(fill='x',pady=15)
-        self.bank=ttk.Combobox(box,values=self.banks(),state='readonly',width=40)
+        self.bank=SearchableCombobox(box,values=self.banks(),width=40)
         if self.banks():self.bank.current(0)
         self.date=ttk.Entry(box,width=20);self.statement=ttk.Entry(box,width=20)
         for i,(lab,w) in enumerate([('Bank',self.bank),('Statement Date',self.date),('Statement Balance',self.statement)]):tk.Label(box,text=lab,bg='white',font=('Segoe UI',9,'bold')).grid(row=0,column=i);w.grid(row=1,column=i,padx=6,pady=5)
@@ -120,7 +121,7 @@ class TransferFrame(tk.Frame):
         for i,l in enumerate(fields):
             tk.Label(box,text=l,bg='white',font=('Segoe UI',9,'bold')).grid(row=i,column=0,sticky='w',pady=7)
             if l in ('From Account','To Account'):
-                w=ttk.Combobox(box,values=vals,state='readonly',width=40);
+                w=SearchableCombobox(box,values=vals,width=40);
                 if vals:w.current(0)
             else:
                 w=ttk.Entry(box,width=42)
